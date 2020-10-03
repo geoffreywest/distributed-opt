@@ -6,6 +6,7 @@ import time
 from scipy.special import expit
 import pandas as pd
 import multiprocessing
+import concurrent.futures
 
 
 ## Generating data
@@ -188,6 +189,8 @@ class Machine:
 ## Experiments
 
 def run_rounds_counting(arg):
+    global results_round_1
+
     eta = arg['eta']
     q = arg['q']
     eps = arg['eps']
@@ -195,7 +198,6 @@ def run_rounds_counting(arg):
 
     randX, randY = rand_data[id]
 
-    best_val = .2
     # Create a DataSource class to avoid repeated use of data
     source = DataSource(randX, randY)
 
@@ -216,7 +218,9 @@ def run_rounds_counting(arg):
     while log_losses[-1] - best_val > eps:
         if R % 100 == 0:
             print(R)
-        if R >= 1000:
+            print(log_losses[-1] - best_val)
+            print(f'Best val: {best_val}')
+        if R >= 500:
             break
         w_cur = ws[-1]
 
@@ -230,7 +234,8 @@ def run_rounds_counting(arg):
         ws.append(w_next)
 
         # Record progress on the objective
-        w_mean = np.asmatrix(np.mean(ws, axis=0))
+        in_mean = min(len(ws), 10)
+        w_mean = np.asmatrix(np.mean(ws[-in_mean:], axis=0))
         log_loss, l2_norm = objective(X, w_mean, y)
         log_losses.append(log_loss)
         l2_norms.append(l2_norm)
@@ -288,14 +293,51 @@ def run(args):
     q = args['q']
 
 
+def optimize_param(X, y, lmbda=0, eta=5e-2):
+    M = 100  # Number of machines in each round
+    K = 10  # Number of stochastic gradients to calculate on each machine
+    R = 500  # Number of rounds
+
+    w0 = np.asmatrix(np.zeros(X.shape[1])).T
+
+    w = w0
+    next_idx = 0
+    log_losses = []
+    l2_norms = []
+
+    log_loss, l2_norm = objective(X, w, y)
+    log_losses.append(log_loss)
+    l2_norms.append(l2_norm)
+
+    for r in range(R):
+        if r % (R / 10) == 0:
+            print(f'{log_losses[-1]}')
+            pass
+
+        next_idx = next_idx % X.shape[0]
+        X_batch = X[next_idx:next_idx + K * M]
+        y_batch = y[next_idx:next_idx + K * M]
+        next_idx += K * M
+        next_idx = next_idx % X.shape[0]
+
+        grad, l2_grad = gradient(X_batch, w, y_batch)
+        w = w - eta * K * (grad + lmbda / 2 * l2_grad)
+
+        log_loss, l2_norm = objective(X, w, y)
+        log_losses.append(log_loss)
+        l2_norms.append(l2_norm)
+
+    return log_losses[-1]
+
+
 
 #############################################################################################
 
 def callback(args):
-    print('In callback...')
-    run_rounds_counting(args)
-    print(args)
-    return
+    print('Beginning callback...')
+    res = run_rounds_counting(args)
+    print('Completed callback...')
+    return res
 
 M = 10
 K = 10
@@ -306,6 +348,8 @@ results_round_2 = {}
 
 X = None
 y = None
+best_val = 0
+
 
 def main():
     global X
@@ -315,6 +359,7 @@ def main():
     global results_round_2
     global M
     global K
+    global best_val
 
     start = time.time()
 
@@ -324,7 +369,10 @@ def main():
 
     q_params = [0, .25, .5, 1]
 
-    N_random = 2
+    best_val = optimize_param(X, y)
+    print(f'----- Best val: {best_val} -----')
+
+    N_random = 20
     for i in range(2 * N_random):
         indices = np.random.randint(0, n, 500_000)
         randX = X[indices]
@@ -334,11 +382,14 @@ def main():
     suboptimalities = .05 / np.arange(1, 11)
 
     grids = {
-        0: [.12, .14, .16, .18, .2],
-        .25: [.12, .14, .16, .18, .2],
-        .5: [.12, .14, .16, .18, .2],
-        1: [.12, .14, .16, .18, .2]
+        0:   [.12, .14, .16, .18, .2, .22, .24, .26, .28, .3, .32, .34, .36],
+        .25: [.12, .14, .16, .18, .2, .22, .24, .26, .28, .3, .32, .34, .36],
+        .5:  [.12, .14, .16, .18, .2, .22, .24, .26, .28, .3, .32, .34, .36],
+        1:   [.12, .14, .16, .18, .2, .22, .24, .26, .28, .3, .32, .34, .36],
     }
+
+    #for q in grids.keys():
+    #    grids[q] = grids[q][:5]
 
     processes = []
     args_list = []
@@ -356,23 +407,123 @@ def main():
                         'M': M,
                         'K': K,
                     }
-                    p = multiprocessing.Process(target=callback, args=[args])
-                    processes.append(p)
+                    #p = multiprocessing.Process(target=callback, args=[args])
+                    #processes.append(p)
                     args_list.append(args)
 
     print(f'Processes to start: {len(processes)}')
-    for p in processes[:10]:
-        p.start()
+    #for p in processes[:2]:
+        #p.start()
 
-    for p in processes[:10]:
-        p.join()
+    #for p in processes[:2]:
+        #p.join()
 
-    #for arg in args_list[:10]:
-    #    callback(args)
+    N_to_run = len(args_list)
+
+    #print(len(args_list))
+    #return
+
+    for arg in args_list[:N_to_run]:
+        #callback(args)
+        f = concurrent.futures.ProcessPoolExecutor().submit(callback, arg)
+        processes.append(f)
+
+    for arg, f in list(zip(args_list, processes))[:N_to_run]:
+        key = gen_key(arg)
+        results_round_1[key] = f.result()
+
+    optimal_steps = {}
+
+    for q in q_params:
+        for eps in suboptimalities:
+            a = len(grids[q])
+            b = N_random
+            counts = np.zeros((a,b))
+            for i in range(a):
+                for j in range(b):
+                    key = gen_key({
+                        'opt': 'inner/outer',
+                        'q': q,
+                        'eta': grids[q][i],
+                        'id': j,
+                        'eps': eps,
+                        'M': M,
+                        'K': K,
+                    })
+                    counts[i][j] = results_round_1[key]
+            best_steps = np.mean(counts, axis=1)
+            best_step = np.argmin(best_steps)
+            optimal_steps[q,eps] = grids[q][best_step]
+
+    mid = time.time()
+
+    args_list_2 = []
+    processes_2 = []
+
+    for i in range(N_random):
+        for q in q_params:
+            for eps in suboptimalities:
+                eta = optimal_steps[q,eps]
+                args_list_2.append({
+                    'opt': 'inner/outer',
+                    'q': q,
+                    'eta': eta,
+                    'id': N_random + i,
+                    'eps': eps,
+                    'M': M,
+                    'K': K,
+                })
+
+    for arg in args_list_2:
+        f = concurrent.futures.ProcessPoolExecutor().submit(callback, arg)
+        processes_2.append(f)
+
+    for arg, f in zip(args_list_2, processes_2):
+        key = gen_key(arg)
+        results_round_2[key] = f.result()
+
+    aggregate_results = {}
+
+    for q in q_params:
+        for eps in suboptimalities:
+            vals = []
+            for i in range(N_random):
+                eta = optimal_steps[q,eps]
+                key = gen_key({
+                    'opt': 'inner/outer',
+                    'q': q,
+                    'eta': eta,
+                    'id': N_random + i,
+                    'eps': eps,
+                    'M': M,
+                    'K': K,
+                })
+                vals.append(results_round_2[key])
+            aggregate_results[q,eps] = np.mean(vals)
 
     finish = time.time()
-    print(results_round_1)
-    print(f'Time elapsed: {finish-start}')
+    print(len(results_round_1))
+    for k, v in results_round_1.items():
+        print(k,v)
+
+    steps = []
+    for k, v in optimal_steps.items():
+        print(k, v)
+        steps.append(k + (v,))
+
+    print('---')
+    counts = []
+    for k, v in aggregate_results.items():
+        print(k, v)
+        counts.append(k + (v,))
+
+    df1 = pd.DataFrame.from_records(steps)
+    df2 = pd.DataFrame.from_records(counts)
+    df1.to_csv(f'steps_{M}_{K}.csv', header=True)
+    df2.to_csv(f'counts_{M}_{K}.csv', header=True)
+
+    print(f'Time elapsed phase 1: {mid-start}')
+    print(f'Time elapsed phase 2: {finish-mid}')
 
 
 def gen_key(arg):
