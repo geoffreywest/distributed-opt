@@ -1,4 +1,5 @@
 import numpy as np
+import pandas as pd
 import torch
 import argparse
 import importlib
@@ -10,7 +11,9 @@ from tqdm import tqdm
 from multiprocessing import Pool
 
 sys.path.append('/Users/geoffreywest/Desktop/Research/Srebro/Code/distributed-opt/')
-from trainers.fedio import Server
+import trainers.fedio
+import trainers.fedpdsvrg
+import trainers.fedprox
 #from models.mnist.mclr import Model
 from utils.model_utils import read_data
 from utils.model_utils import Metrics
@@ -26,27 +29,30 @@ MODEL_PARAMS = {
     'synthetic.mclr': (10,) # num_classes
 }
 
-def callback(lr, seed, dataset, options, model):
+OPTIMIZERS = ['fedavg', 'fedprox', 'feddane', 'fedddane', 'fedsgd', 'fedprox_origin', 'fedio', 'fedpdsvrg']
+DATASETS = ['sent140', 'nist', 'shakespeare', 'mnist',
+'synthetic_iid', 'synthetic_0_0', 'synthetic_0.5_0.5', 'synthetic_1_1']  # NIST is EMNIST in the paper TODO
+
+def callback(lr, seed, dataset, options, model_path, server_path):
     options['learning_rate'] = lr
     options['seed'] = seed
     options['mu'] = 0
-    options['optimizer'] = 'fedio'
+    options['verbosity'] = 0
+    #options['optimizer'] = 'fedio'
 
     # Set seeds
     random.seed(1 + seed)
     np.random.seed(12 + seed)
     torch.manual_seed(123 + seed)
 
-    if options['dataset'].startswith('synthetic'):
-        model_path = '%s.%s.%s' % ('models', 'synthetic', options['model'])
-    else:
-        model_path = '%s.%s.%s' % ('models', options['dataset'], options['model'])
+    model_mod = importlib.import_module(model_path)
+    server_mod = importlib.import_module(server_path)
 
-    mod = importlib.import_module(model_path)
-    model = getattr(mod, 'Model')
-    optimizer = Server(options, model, dataset)
+    model = getattr(model_mod, 'Model')
+    server = getattr(server_mod, 'Server')
+    optimizer = server(options, model, dataset)
     optimizer.run()
-
+    print('Callback done.')
     return optimizer.metrics
 
 def get_search_space(mid, coef, pow_low, pow_high, **kwargs):
@@ -55,9 +61,15 @@ def get_search_space(mid, coef, pow_low, pow_high, **kwargs):
 def read_options():
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('--dataset',
-                        help='which dataset to use',
+    parser.add_argument('--optimizer',
+                        help='name of optimizer;',
                         type=str,
+                        choices=OPTIMIZERS,
+                        default='fedio')
+    parser.add_argument('--dataset',
+                        help='name of dataset;',
+                        type=str,
+                        choices=DATASETS,
                         default='mnist')
     parser.add_argument('--model',
                         help='which model to use',
@@ -79,6 +91,10 @@ def read_options():
                         help='proportion of inner/outer learniing rate',
                         type=float,
                         default=.5)
+    parser.add_argument('--mu',
+                        help='weight on proximal term',
+                        type=float,
+                        default=0)
     parser.add_argument('--mid',
                         help='median in the learning rate search',
                         type=float,
@@ -119,6 +135,10 @@ def read_options():
                         help='evaluate every ____ rounds;',
                         type=int,
                         default=-1)
+    parser.add_argument('--note',
+                        help='optional special identifier to put in the results file name',
+                        type=str,
+                        default='')
 
     try: parsed = vars(parser.parse_args())
     except IOError as msg: parser.error(str(msg))
@@ -127,7 +147,7 @@ def read_options():
 
     return parsed
 
-def parallel_execute(args, dataset, options, model):
+def parallel_execute(args, dataset, options, model_path, server_path):
     '''
     Input:
         - args: a list of (lr, seed) pairs to experiment
@@ -136,8 +156,8 @@ def parallel_execute(args, dataset, options, model):
         - list of metrics objects from each run
     '''
     with Pool(5) as p:
-        args_packed = [(arg[0], arg[1], dataset, options, model) for arg in args]
-        res = p.starmap(callback, args_packed)
+        args_packed = [(arg[0], arg[1], dataset, options, model_path, server_path) for arg in args]
+        res = tqdm(p.starmap(callback, args_packed)).iterable
     return res
 
 
@@ -174,29 +194,24 @@ def main():
         model_path = '%s.%s.%s' % ('models', 'synthetic', options['model'])
     else:
         model_path = '%s.%s.%s' % ('models', options['dataset'], options['model'])
-
-    mod = importlib.import_module(model_path)
-    model = getattr(mod, 'Model')
+    # Import server
+    server_path = 'trainers.{}'.format(options['optimizer'])
     # Try all seeds and learning rates
     args = list(itertools.product(search,seeds))
-    results = parallel_execute(args, dataset, options, model)
-    # TODO write results
+    results = parallel_execute(args, dataset, options, model_path, server_path)
     losses = reduce_results(args, results)
-    print(losses)
+    results_reduced = list(zip(search,losses))
+    print(results_reduced)
+    print('Best result: {} (index {})'.format(results_reduced[np.argmin(losses)], np.argmin(losses)))
+    # Make output directory
+    if not os.path.exists('results'):
+        os.mkdir('results')
+    note = '_' + options['note'] if len(options['note']) > 0 else ''
+    out_file = 'results/tune_{}_{}_{}_{}_{}_{}_{}{}.csv'.format(options['optimizer'], options['dataset'],
+                                            options['model'], options['rho'], options['num_rounds'],
+                                            options['seed'], options['num_seeds'], note)
+    pd.DataFrame(results_reduced, columns=['lr', 'loss']).set_index('lr').to_csv(out_file)
     return
 
 if __name__  == '__main__':
     main()
-'''
-Command line args
-n seeds
-mid
-coef
-pow low
-pow high
-n rounds
-clients per round
-batch size
-num epochs
-seed
-'''
