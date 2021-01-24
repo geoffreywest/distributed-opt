@@ -13,7 +13,8 @@ class BaseFederated(object):
 
         # Create worker nodes
         self.clients = self.setup_clients(dataset)
-        print('{} Clients in Total'.format(len(self.clients)))
+        if self.verbosity > 0:
+            print('{} Clients in Total'.format(len(self.clients)))
         self.latest_params = self.client_model.get_params()
 
         # Initialize metrics
@@ -43,6 +44,7 @@ class BaseFederated(object):
 
         ids = [c.id for c in self.clients]
         groups = [c.group for c in self.clients]
+        losses = list(map(float, losses))
 
         return ids, groups, num_samples, tot_correct, losses
 
@@ -79,10 +81,11 @@ class BaseFederated(object):
             3. num_samples: number of evaluation samples on each client
             4. tot_correct: number evaluation samples correct
         '''
-        loss, num_correct, num_samples = zip(*[c.test() for c in self.clients])
+        losses, num_correct, num_samples = zip(*[c.test() for c in self.clients])
         ids = [c.id for c in self.clients]
         groups = [c.group for c in self.clients]
-        return ids, groups, num_samples, num_correct
+        losses = list(map(float, losses))
+        return ids, groups, num_samples, num_correct, losses
 
     def save(self):
         self.client_model.save()

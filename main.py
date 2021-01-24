@@ -14,7 +14,7 @@ https://github.com/litian96/FedProx/blob/master/main.py
 # GLOBAL PARAMETERS
 OPTIMIZERS = ['fedavg', 'fedprox', 'feddane', 'fedddane', 'fedsgd', 'fedprox_origin', 'fedio', 'fedpdsvrg']
 DATASETS = ['sent140', 'nist', 'shakespeare', 'mnist',
-'synthetic_iid', 'synthetic_0_0', 'synthetic_0.5_0.5', 'synthetic_1_1']  # NIST is EMNIST in the paepr TODO
+'synthetic_iid', 'synthetic_0_0', 'synthetic_0.5_0.5', 'synthetic_1_1']  # NIST is EMNIST in the paper TODO
 
 
 MODEL_PARAMS = {
@@ -110,7 +110,7 @@ def read_options():
     torch.manual_seed(123 + parsed['seed'])
 
     # Load model
-    # TODO do we need the special case
+    # TODO do we need the special case?
     if parsed['dataset'].startswith('synthetic'):
         model_path = '%s.%s.%s' % ('models', 'synthetic', parsed['model'])
     else:

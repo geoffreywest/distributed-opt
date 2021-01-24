@@ -1,8 +1,9 @@
 import torch
 import torch.nn as nn
+import numpy as np
 import sys
 
-sys.path.append('/Users/geoffreywest/Desktop/Research/Srebro/Code/distributed-opt/research')
+sys.path.append('/Users/geoffreywest/Desktop/Research/Srebro/Code/distributed-opt/')
 from utils.model_utils import batch_data
 
 class Model(nn.Module):
@@ -57,18 +58,20 @@ class Model(nn.Module):
         '''
         num_correct = 0
         num_samples = 0
+        losses = []
         with torch.no_grad():
             for X, y in batch_data(data, batch_size=32):
                 out = self.forward(X)
                 preds = torch.argmax(out, dim=1)
                 num_correct += (preds == y).int().sum().item()
                 num_samples += X.shape[0]
-        loss = 1.0 * num_correct / num_samples
+                losses.append(self.loss_fn(out, y).item())
+        loss = np.mean(losses)
         return loss, num_correct, num_samples
 
     def save(self):
         print('Saving model...')
-        path = '/Users/geoffreywest/Desktop/Research/Srebro/Code/distributed-opt/research/models/mnist/mod.pt'
+        path = '/Users/geoffreywest/Desktop/Research/Srebro/Code/distributed-opt/models/mnist/mod.pt'
         torch.save(self.linear, path)
 
 

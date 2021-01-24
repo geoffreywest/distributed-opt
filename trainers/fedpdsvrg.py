@@ -5,7 +5,7 @@ import importlib
 import sys
 
 from .fedbase import BaseFederated
-sys.path.append('/Users/geoffreywest/Desktop/Research/Srebro/Code/distributed-opt/research')
+sys.path.append('/Users/geoffreywest/Desktop/Research/Srebro/Code/distributed-opt/')
 from utils.model_utils import batch_data
 
 class PDSVRGOptimizer:

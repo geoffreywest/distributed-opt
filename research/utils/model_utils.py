@@ -13,7 +13,6 @@ class Metrics(object):
         self.client_computations = {c.id: [0] * num_rounds for c in clients}
         self.bytes_read = {c.id: [0] * num_rounds for c in clients}
         self.accuracies = []
-        self.train_losses = []
         self.train_accuracies = []
 
     def update(self, rnd, cid, stats):
@@ -21,12 +20,6 @@ class Metrics(object):
         self.bytes_written[cid][rnd] += bytes_w
         self.client_computations[cid][rnd] += comp
         self.bytes_read[cid][rnd] += bytes_r
-
-    def mean_loss(self):
-        '''
-        Return the mean loss of all clients
-        '''
-        return np.mean(self.train_losses)
 
     def write(self):
         metrics = {}

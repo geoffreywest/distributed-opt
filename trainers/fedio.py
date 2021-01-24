@@ -5,7 +5,7 @@ import importlib
 import sys
 
 from .fedbase import BaseFederated
-sys.path.append('/Users/geoffreywest/Desktop/Research/Srebro/Code/distributed-opt/research')
+sys.path.append('/Users/geoffreywest/Desktop/Research/Srebro/Code/distributed-opt/')
 from utils.model_utils import batch_data
 
 class InnerOptimizer(torch.optim.SGD):
@@ -73,7 +73,6 @@ class Server(BaseFederated):
     Server for distributed optimization with inner/outer method
     '''
     def __init__(self, options, model, dataset):
-        print('Using inner/outer method to optimize.')
         self.client_model = model(*options['model_params'])
         self.inner_opt = InnerOptimizer(self.client_model, options['learning_rate'], options['rho'])
         super(Server, self).__init__(options, model, dataset)
@@ -82,18 +81,22 @@ class Server(BaseFederated):
         '''
         Train using inner/outer method.
         '''
-        print('Training with {} workers ---'.format(self.clients_per_round))
+        if self.verbosity > 0:
+            print('Training with {} workers ---'.format(self.clients_per_round))
 
         latest_params = [p.clone() for p in self.client_model.get_params()]
-        for i in trange(self.num_rounds):
+        # Use TQDM range for printing progress if verbosity > 0
+        iter = trange(self.num_rounds) if self.verbosity > 0 else range(self.num_rounds)
+        for i in iter:
             # test model
-            if i % self.eval_every == 0:
+            if i % self.eval_every == 0 and self.eval_every > 0:
                 stats = self.test()
                 stats_train = self.train_error_and_loss()
                 self.metrics.accuracies.append(stats)
                 self.metrics.train_accuracies.append(stats_train)
-                tqdm.write('At round {} accuracy: {}'.format(i, np.sum(stats[3]) * 1.0 / np.sum(stats[2])))
-                tqdm.write('At round {} training accuracy: {}'.format(i, np.sum(stats_train[3]) * 1.0 / np.sum(stats_train[2])))
+                if self.verbosity > 0:
+                    tqdm.write('At round {} accuracy: {}'.format(i, np.sum(stats[3]) * 1.0 / np.sum(stats[2])))
+                    tqdm.write('At round {} training accuracy: {}'.format(i, np.sum(stats_train[3]) * 1.0 / np.sum(stats_train[2])))
 
             # Select clients for the round
             selected_clients = self.select_clients(i, num_clients=self.clients_per_round)
@@ -127,8 +130,10 @@ class Server(BaseFederated):
         stats_train = self.train_error_and_loss()
         self.metrics.accuracies.append(stats)
         self.metrics.train_accuracies.append(stats_train)
-        tqdm.write('At round {} accuracy: {}'.format(self.num_rounds, np.sum(stats[3]) * 1.0 / np.sum(stats[2])))
-        tqdm.write('At round {} training accuracy: {}'.format(self.num_rounds, np.sum(stats_train[3]) * 1.0 / np.sum(stats_train[2])))
+        self.metrics.train_losses = stats_train[4]
+        if self.verbosity > 0:
+            tqdm.write('At round {} accuracy: {}'.format(self.num_rounds, np.sum(stats[3]) * 1.0 / np.sum(stats[2])))
+            tqdm.write('At round {} training accuracy: {}'.format(self.num_rounds, np.sum(stats_train[3]) * 1.0 / np.sum(stats_train[2])))
         self.metrics.write()
 
 
