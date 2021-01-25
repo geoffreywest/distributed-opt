@@ -7,6 +7,9 @@ sys.path.append('/Users/geoffreywest/Desktop/Research/Srebro/Code/distributed-op
 from utils.model_utils import batch_data
 
 class Model(nn.Module):
+    '''
+    A multiclass logistic regression module
+    '''
     def __init__(self, n_classes, input_dim=28*28):
         super(Model, self).__init__()
         self.loss_fn = nn.CrossEntropyLoss()
@@ -21,14 +24,6 @@ class Model(nn.Module):
     def set_params(self, model_params, clone):
         '''
         Update the model parameters
-        '''
-        # Todo delete
-        '''
-        assert(len(model_params) == 2)
-        weight, bias = model_params
-        self.linear.weight.data = weight
-        self.linear.bias.data = bias
-        return
         '''
         with torch.no_grad():
             for cur, new in zip(self.parameters(), model_params):
