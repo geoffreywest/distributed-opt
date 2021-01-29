@@ -45,14 +45,16 @@ class Metrics(object):
         metrics['bytes_written'] = self.bytes_written
         metrics['bytes_read'] = self.bytes_read
 
+        base_keys = ['optimizer', 'dataset', 'dataloc', 'model', 'num_rounds', 'clients_per_round', 'num_epochs', 'batch_size', 'seed']
         if self.params['optimizer'] == 'fedio':
-            format_keys = ['seed', 'optimizer', 'learning_rate', 'num_epochs', 'rho']
+            format_keys = ['learning_rate', 'rho']
         elif self.params['optimizer'] == 'fedpdsvrg':
-            format_keys = ['seed', 'optimizer', 'learning_rate', 'num_epochs']
+            format_keys = ['learning_rate']
         elif self.params['optimizer'] == 'fedprox':
-            format_keys = ['seed', 'optimizer', 'learning_rate', 'num_epochs', 'mu']
+            format_keys = ['learning_rate', 'mu']
         else:
-            format_keys = ['seed', 'optimizer', 'learning_rate', 'num_epochs', 'mu']
+            format_keys = ['learning_rate']
+        format_keys = base_keys + format_keys
 
         format_params = [self.params[k] for k in format_keys]
 

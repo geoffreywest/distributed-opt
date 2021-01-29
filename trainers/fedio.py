@@ -89,7 +89,7 @@ class Server(BaseFederated):
         iter = trange(self.num_rounds) if self.verbosity > 0 else range(self.num_rounds)
         for i in iter:
             # test model
-            if i % self.eval_every == 0 and self.eval_every > 0:
+            if i % self.eval_every == 0:
                 stats = self.test()
                 stats_train = self.train_error_and_loss()
                 self.metrics.accuracies.append(stats)

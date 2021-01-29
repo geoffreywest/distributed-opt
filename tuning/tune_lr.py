@@ -32,11 +32,11 @@ MODEL_PARAMS = {
 OPTIMIZERS = ['fedavg', 'fedprox', 'feddane', 'fedddane', 'fedsgd', 'fedprox_origin', 'fedio', 'fedpdsvrg']
 DATASETS = ['sent140', 'nist', 'shakespeare', 'mnist',
 'synthetic_iid', 'synthetic_0_0', 'synthetic_0.5_0.5', 'synthetic_1_1']  # NIST is EMNIST in the paper TODO
+DATALOCS = ['orig', 'grouped']
 
 def callback(lr, seed, dataset, options, model_path, server_path):
     options['learning_rate'] = lr
     options['seed'] = seed
-    options['mu'] = 0
     options['verbosity'] = 0
     #options['optimizer'] = 'fedio'
 
@@ -71,6 +71,11 @@ def read_options():
                         type=str,
                         choices=DATASETS,
                         default='mnist')
+    parser.add_argument('--dataloc',
+                        help='name of dataset;',
+                        type=str,
+                        choices=DATALOCS,
+                        default='orig')
     parser.add_argument('--model',
                         help='which model to use',
                         type=str,
@@ -184,8 +189,8 @@ def main():
     # Generate the random seeds to test
     seeds = range(options['seed'], options['seed'] + options['num_seeds'])
     # Read in the data
-    train_path = os.path.join('..','data', options['dataset'], 'orig', 'train.json')
-    test_path = os.path.join('..','data', options['dataset'], 'orig', 'test.json')
+    train_path = os.path.join('..','data', options['dataset'], options['dataloc'], 'train.json')
+    test_path = os.path.join('..','data', options['dataset'], options['dataloc'], 'test.json')
     print('Reading data...')
     dataset = read_data(train_path, test_path)
     print('Reading data done.')
@@ -207,8 +212,9 @@ def main():
     if not os.path.exists('results'):
         os.mkdir('results')
     note = '_' + options['note'] if len(options['note']) > 0 else ''
-    out_file = 'results/tune_{}_{}_{}_{}_{}_{}_{}{}.csv'.format(options['optimizer'], options['dataset'],
-                                            options['model'], options['rho'], options['num_rounds'],
+    auxiliary_param = 'rho' if options['optimizer'] == 'fedio' else 'mu'
+    out_file = 'results/tune_{}_{}_{}_{}_{}_{}_{}_{}{}.csv'.format(options['optimizer'], options['dataset'], options['dataloc'],
+                                            options['model'], options[auxiliary_param], options['num_rounds'],
                                             options['seed'], options['num_seeds'], note)
     pd.DataFrame(results_reduced, columns=['lr', 'loss']).set_index('lr').to_csv(out_file)
     return
