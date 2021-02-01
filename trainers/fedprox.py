@@ -36,7 +36,22 @@ class ProxOptimizer(torch.optim.SGD):
             res += torch.norm(param - orig)
         return self.mu / 2 * res
 
-    def solve_inner(self, data, num_epochs=None, batch_size=None):
+    def solve_iters(self, data, num_iters, batch_size):
+        '''
+        Perform the inner optimization routine for a set number of iterations
+        '''
+        self.reset_meta()
+        for X, y in batch_data_multiple_iters(data, batch_size, num_iters):
+            # Perform the gradient step
+            self.zero_grad()
+            loss = self.client_model.loss_fn(self.client_model(X), y) + self.prox_term()
+            loss.backward()
+            self.step()
+        soln = [p.clone() for p in self.client_model.parameters()]
+        comp = num_epochs * (len(data['y'])//batch_size) * batch_size * self.flops
+        return soln, comp
+
+    def solve_inner(self, data, num_epochs, batch_size):
         '''
         Perform the inner optimization routine
         '''
@@ -94,9 +109,9 @@ class Server(BaseFederated):
                 #c.set_params(latest_params, clone=True)
 
                 # Execute inner gradient descent
-                soln, stats = c.solve_inner(
+                soln, stats = c.solve_iters(
                     init_params=latest_params,
-                    num_epochs=self.num_epochs,
+                    num_iters=self.num_iters,
                     batch_size=self.batch_size
                 )
 

@@ -6,7 +6,7 @@ import sys
 
 from .fedbase import BaseFederated
 sys.path.append('/Users/geoffreywest/Desktop/Research/Srebro/Code/distributed-opt/')
-from utils.model_utils import batch_data
+from utils.model_utils import batch_data, batch_data_multiple_iters
 
 class PDSVRGOptimizer:
     '''
@@ -53,6 +53,30 @@ class PDSVRGOptimizer:
         Return the mean gradient from the running sum
         '''
         return [g / self.grad_count for g in self.grad_sum_at_ref]
+
+    def solve_iters(self, data, ref_params, ref_grad, num_iters, batch_size):
+        '''
+        Perform the inner optimization routine for a set number of iterations
+        '''
+        self.reset_meta()
+        
+        cur_param = list(self.client_model.parameters())
+        for X, y in batch_data_multiple_iters(data, batch_size, num_iters):
+            # Update the parameter iterate
+            cur_param = self.step(
+                cur_param,
+                self.client_model.gradient(cur_param, X, y),
+                self.client_model.gradient(ref_params, X, y),
+                ref_grad
+            )
+            # Update the gradient sum
+            self.add_grad_at_ref(
+                self.client_model.gradient(self.orig, X, y)
+            )
+
+        comp = 0 # TODO
+        soln = [p.clone() for p in cur_param]
+        return (soln, self.grad_mean()), comp
 
     def solve_inner(self, data, ref_params, ref_grad, num_epochs, batch_size):
         '''
@@ -128,11 +152,11 @@ class Server(BaseFederated):
 
             for c in active_clients:
                 # Execute inner optimization
-                (soln, grad_mean), stats = c.solve_inner(
+                (soln, grad_mean), stats = c.solve_iters(
                     init_params=latest_params,
                     ref_params=prev_params,
                     ref_grad=grad_mean,
-                    num_epochs=self.num_epochs,
+                    num_iters=self.num_iters,
                     batch_size=self.batch_size
                 )
 

@@ -90,13 +90,13 @@ def gen_grouped():
         mnist_data.append(idx)
 
     # Setup 1000 users with train/test data each
-    samples_per_client = 60
+    samples_per_client = 600
     for i in trange(N_CLIENTS):
 
         label1, label2 = i % 10, (i+1) % 10
-        idx = np.concatenate([mnist_data[label1][-30:], mnist_data[label2][-30:]])
-        mnist_data[label1] = mnist_data[label1][:-30]
-        mnist_data[label2] = mnist_data[label2][:-30]
+        idx = np.concatenate([mnist_data[label1][-300:], mnist_data[label2][-300:]])
+        mnist_data[label1] = mnist_data[label1][:-300]
+        mnist_data[label2] = mnist_data[label2][:-300]
         s = np.random.permutation(idx)
         X, y = mnist.data[s], mnist.target[s]
 

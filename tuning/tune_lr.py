@@ -127,7 +127,7 @@ def read_options():
     parser.add_argument('--num_iters',
                         help='number of iterations per machine per round',
                         type=int,
-                        default=100)
+                        default=10)
     parser.add_argument('--seed',
                         help='random seed',
                         type=int,
@@ -212,10 +212,26 @@ def main():
     if not os.path.exists('results'):
         os.mkdir('results')
     note = '_' + options['note'] if len(options['note']) > 0 else ''
-    auxiliary_param = 'rho' if options['optimizer'] == 'fedio' else 'mu'
-    out_file = 'results/tune_{}_{}_{}_{}_{}_{}_{}_{}{}.csv'.format(options['optimizer'], options['dataset'], options['dataloc'],
-                                            options['model'], options[auxiliary_param], options['num_rounds'],
-                                            options['seed'], options['num_seeds'], note)
+    def get_aux_param(options):
+        optim = options['optimizer']
+        if optim == 'fedio':
+            return options['rho']
+        elif optim == 'fedprox':
+            return options['mu']
+        return 0
+    out_file = 'results/tune_{}_{}_{}_{}_{:.3f}_{}_{}_{}_{}_{}{}.csv'.format(
+        options['optimizer'],
+        options['dataset'],
+        options['dataloc'],
+        options['model'],
+        get_aux_param(options),
+        options['num_rounds'],
+        options['clients_per_round'],
+        options['num_iters'],
+        options['seed'],
+        options['num_seeds'],
+        note
+    )
     pd.DataFrame(results_reduced, columns=['lr', 'loss']).set_index('lr').to_csv(out_file)
     return
 

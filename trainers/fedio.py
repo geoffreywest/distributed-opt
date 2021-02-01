@@ -6,7 +6,7 @@ import sys
 
 from .fedbase import BaseFederated
 sys.path.append('/Users/geoffreywest/Desktop/Research/Srebro/Code/distributed-opt/')
-from utils.model_utils import batch_data
+from utils.model_utils import batch_data, batch_data_multiple_iters
 
 class InnerOptimizer(torch.optim.SGD):
     '''
@@ -48,8 +48,26 @@ class InnerOptimizer(torch.optim.SGD):
             soln = [op - gp * self.lr for op, gp in zip(self.orig, self.grad_sum)]
         return soln
 
+    def solve_iters(self, data, num_iters, batch_size):
+        '''
+        Perform the inner optimization routine for a set number of iterations
+        '''
+        self.reset_meta()
+        for X, y in batch_data_multiple_iters(data, batch_size, num_iters):
+        #for X, y in batch_data(data, batch_size):
+            # Perform the gradient step
+            self.zero_grad()
+            loss = self.client_model.loss_fn(self.client_model(X), y)
+            loss.backward()
+            self.step()
+            # Track the gradient for global step
+            self.add_grad([p.grad for p in self.client_model.parameters()])
+        soln = self.global_step()
+        #comp = num_epochs * (len(data['y'])//batch_size) * batch_size * self.flops
+        comp = 0 # TODO
+        return soln, comp
 
-    def solve_inner(self, data, num_epochs=1, batch_size=32):
+    def solve_inner(self, data, num_epochs, batch_size):
         '''
         Perform the inner optimization routine
         '''
@@ -64,7 +82,8 @@ class InnerOptimizer(torch.optim.SGD):
                 # Track the gradient for global step
                 self.add_grad([p.grad for p in self.client_model.parameters()])
         soln = self.global_step()
-        comp = num_epochs * (len(data['y'])//batch_size) * batch_size * self.flops
+        #comp = num_epochs * (len(data['y'])//batch_size) * batch_size * self.flops
+        comp = 0 # TODO
         return soln, comp
 
 
@@ -109,9 +128,9 @@ class Server(BaseFederated):
                 #c.set_params(latest_params, clone=True)
 
                 # Execute inner gradient descent
-                soln, stats = c.solve_inner(
+                soln, stats = c.solve_iters(
                     init_params=latest_params,
-                    num_epochs=self.num_epochs,
+                    num_iters=self.num_iters,
                     batch_size=self.batch_size
                 )
 
@@ -123,6 +142,7 @@ class Server(BaseFederated):
 
             # Update models
             latest_params = self.aggregate(csolns)
+            self.client_model.set_params(latest_params, clone=False)
 
         # Final test model
         self.client_model.set_params(latest_params, clone=False)

@@ -1,0 +1,51 @@
+
+--- orig
+
+M,K,R = 10,60,10
+
+python tune_lr.py --optimizer='fedpdsvrg' --rho=0 --dataloc='orig' --mid=0.02 --num_rounds=10 --clients_per_round=10 --num_iters=60
+python tune_lr.py --optimizer='fedio' --rho=1 --dataloc='orig' --mid=0.02 --num_rounds=10 --clients_per_round=10 --num_iters=60
+python tune_lr.py --optimizer='fedio' --rho=.5 --dataloc='orig' --mid=0.02 --num_rounds=10 --clients_per_round=10 --num_iters=60
+python tune_lr.py --optimizer='fedio' --rho=0 --dataloc='orig' --mid=0.02 --num_rounds=10 --clients_per_round=10 --num_iters=60
+
+
+M,K,R = 10,30,20
+
+python tune_lr.py --optimizer='fedpdsvrg' --rho=0 --dataloc='orig' --mid=0.02 --num_rounds=20 --clients_per_round=10 --num_iters=30
+python tune_lr.py --optimizer='fedio' --rho=1 --dataloc='orig' --mid=0.02 --num_rounds=20 --clients_per_round=10 --num_iters=30
+python tune_lr.py --optimizer='fedio' --rho=.5 --dataloc='orig' --mid=0.02 --num_rounds=20 --clients_per_round=10 --num_iters=30
+python tune_lr.py --optimizer='fedio' --rho=0 --dataloc='orig' --mid=0.02 --num_rounds=20 --clients_per_round=10 --num_iters=30
+
+
+M,K,R = 10,10,60
+
+python tune_lr.py --optimizer='fedpdsvrg' --rho=0 --dataloc='orig' --mid=0.02 --num_rounds=60 --clients_per_round=10 --num_iters=10
+python tune_lr.py --optimizer='fedio' --rho=1 --dataloc='orig' --mid=0.02 --num_rounds=60 --clients_per_round=10 --num_iters=10
+python tune_lr.py --optimizer='fedio' --rho=.5 --dataloc='orig' --mid=0.02 --num_rounds=60 --clients_per_round=10 --num_iters=10
+python tune_lr.py --optimizer='fedio' --rho=0 --dataloc='orig' --mid=0.02 --num_rounds=60 --clients_per_round=10 --num_iters=10
+
+
+--- grouped
+
+M,K,R = 10,60,10
+
+python tune_lr.py --optimizer='fedpdsvrg' --rho=0 --dataloc='grouped' --mid=0.02 --num_rounds=10 --clients_per_round=10 --num_iters=60
+python tune_lr.py --optimizer='fedio' --rho=1 --dataloc='grouped' --mid=0.02 --num_rounds=10 --clients_per_round=10 --num_iters=60
+python tune_lr.py --optimizer='fedio' --rho=.5 --dataloc='grouped' --mid=0.02 --num_rounds=10 --clients_per_round=10 --num_iters=60
+python tune_lr.py --optimizer='fedio' --rho=0 --dataloc='grouped' --mid=0.02 --num_rounds=10 --clients_per_round=10 --num_iters=60
+
+
+M,K,R = 10,30,20
+
+python tune_lr.py --optimizer='fedpdsvrg' --rho=0 --dataloc='grouped' --mid=0.02 --num_rounds=20 --clients_per_round=10 --num_iters=30
+python tune_lr.py --optimizer='fedio' --rho=1 --dataloc='grouped' --mid=0.02 --num_rounds=20 --clients_per_round=10 --num_iters=30
+python tune_lr.py --optimizer='fedio' --rho=.5 --dataloc='grouped' --mid=0.02 --num_rounds=20 --clients_per_round=10 --num_iters=30
+python tune_lr.py --optimizer='fedio' --rho=0 --dataloc='grouped' --mid=0.02 --num_rounds=20 --clients_per_round=10 --num_iters=30
+
+
+M,K,R = 10,10,60
+
+python tune_lr.py --optimizer='fedpdsvrg' --rho=0 --dataloc='grouped' --mid=0.02 --num_rounds=60 --clients_per_round=10 --num_iters=10
+python tune_lr.py --optimizer='fedio' --rho=1 --dataloc='grouped' --mid=0.02 --num_rounds=60 --clients_per_round=10 --num_iters=10
+python tune_lr.py --optimizer='fedio' --rho=.5 --dataloc='grouped' --mid=0.02 --num_rounds=60 --clients_per_round=10 --num_iters=10
+python tune_lr.py --optimizer='fedio' --rho=0 --dataloc='grouped' --mid=0.02 --num_rounds=60 --clients_per_round=10 --num_iters=10

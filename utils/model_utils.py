@@ -37,7 +37,7 @@ class Metrics(object):
         metrics['learning_rate'] = self.params['learning_rate']
         metrics['mu'] = self.params['mu']
         metrics['rho'] = self.params['rho']
-        metrics['num_epochs'] = self.params['num_epochs']
+        metrics['num_iters'] = self.params['num_iters']
         metrics['batch_size'] = self.params['batch_size']
         metrics['accuracies'] = self.accuracies
         metrics['train_accuracies'] = self.train_accuracies
@@ -45,7 +45,7 @@ class Metrics(object):
         metrics['bytes_written'] = self.bytes_written
         metrics['bytes_read'] = self.bytes_read
 
-        base_keys = ['optimizer', 'dataset', 'dataloc', 'model', 'num_rounds', 'clients_per_round', 'num_epochs', 'batch_size', 'seed']
+        base_keys = ['optimizer', 'dataset', 'dataloc', 'model', 'num_rounds', 'clients_per_round', 'num_iters', 'batch_size', 'seed']
         if self.params['optimizer'] == 'fedio':
             format_keys = ['learning_rate', 'rho']
         elif self.params['optimizer'] == 'fedpdsvrg':
@@ -58,8 +58,8 @@ class Metrics(object):
 
         format_params = [self.params[k] for k in format_keys]
 
-        metrics_file = os.path.join('out', self.params['dataset'],
-            ('metrics'+'_{}'*len(format_params)+'.json').format(*format_params))
+        metrics_path = os.path.join('out', self.params['dataset']) + '/'
+        metrics_file = metrics_path + ('metrics'+'_{}'*len(base_keys)+'_{:.6f}'*(len(format_keys)-len(base_keys))+'.json').format(*format_params)
 
         if not os.path.exists(os.path.join('out', self.params['dataset'])):
             os.makedirs(os.path.join('out', self.params['dataset']))
@@ -120,6 +120,11 @@ def batch_data_multiple_iters(data, batch_size, num_iters):
     X = data['X']
     y = data['y']
 
+    # Shuffle the data
+    shuffle = np.random.permutation(len(X))
+    X = X[shuffle]
+    y = y[shuffle]
+
     idx = 0
     for i in range(num_iters):
         if idx + batch_size > len(X):
@@ -131,4 +136,5 @@ def batch_data_multiple_iters(data, batch_size, num_iters):
 
         X_batch = X[idx:idx+batch_size]
         y_batch = y[idx:idx+batch_size]
+        idx += 1
         yield X_batch, y_batch

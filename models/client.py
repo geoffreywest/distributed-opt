@@ -73,11 +73,15 @@ class Client(object):
         bytes_r = self.client_model.size
         return soln, (bytes_w, comp, bytes_r)
 
-    def solve_iters(self, num_iters=1, batch_size=10):
+    def solve_iters(self, init_params, **kwargs):
         '''
-        TODO
+        Perform the inner optimization routine for a set number of iterations
         '''
-        raise NotImplementedError
+        bytes_w = self.client_model.size
+        self.set_params(init_params, clone=True)
+        soln, comp = self.inner_opt.solve_iters(self.train_data, **kwargs)
+        bytes_r = self.client_model.size
+        return soln, (bytes_w, comp, bytes_r)
 
     def train_error_and_loss(self):
         loss, num_correct, num_samples = self.client_model.test(self.train_data)
